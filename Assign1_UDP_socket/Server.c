@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
                 ntohs(clientaddr.sin_port), buf);
 
             // recvformat은 [ip:port]<-[ip:port]:[n:recvmsg]::[sendmsg]
-            sprintf(recvformat, "[%s:%d]<-[%s:%d]:[%lu:%s]|%s", 
+            snprintf(recvformat, BUFSIZE, "[%s:%d]<-[%s:%d]:[%lu:%s]|%s", 
                 inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), 
                 inet_ntoa(serveraddr.sin_addr), ntohs(serveraddr.sin_port), 
                 strlen(buf), buf, buf);
@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
                 break;
             }
 
-            sprintf(recvformat, "[%s:%d]<-[%s:%d]:[%lu:%s]|%s", 
+            snprintf(recvformat, BUFSIZE, "[%s:%d]<-[%s:%d]:[%lu:%s]|%s", 
                 inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), 
                 inet_ntoa(serveraddr.sin_addr), ntohs(serveraddr.sin_port), 
                 strlen(buf), buf, chat);
@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
                 sprintf(info, "%d bytes : %d messages", sum_recvByte, sum_recvMsgNum);
             }
 
-            sprintf(recvformat, "[%s:%d]<-[%s:%d]:[%lu:%s]|%s", 
+            snprintf(recvformat, BUFSIZE, "[%s:%d]<-[%s:%d]:[%lu:%s]|%s", 
                 inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), 
                 inet_ntoa(serveraddr.sin_addr), ntohs(serveraddr.sin_port), 
                 strlen(buf), buf, info);
@@ -162,7 +162,7 @@ int main(int argc, char* argv[])
 
         } else if (syntax == 0x04) {
 
-            sprintf(recvformat, "[%s:%d]<-[%s:%d]:[%lu:%s]|%s", 
+            snprintf(recvformat, BUFSIZE,"[%s:%d]<-[%s:%d]:[%lu:%s]|%s", 
                 inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), 
                 inet_ntoa(serveraddr.sin_addr), ntohs(serveraddr.sin_port), 
                 strlen(buf), buf, "server soon close");
