@@ -50,6 +50,7 @@ void printCommandMenu() {
     printf("*     |   |      Press 'q' to Quit     *\n");
     printf("*     | q |                            *\n");
     printf("*     |___|                            *\n");
+    printf("*                                      *\n");
     printf("****************************************\n");
 }
 
@@ -166,13 +167,17 @@ void printClientInfo() {
     printf("****************************************\n");
     printf("*              CLIENT INFO             *\n");
     printf("****************************************\n");
-    printf("*           Client Number : %d         *\n", active_clients_num);
+    printf("*           Client Number : %d          *\n", active_clients_num);
 
-    printf("* No. IP Address      Port Number       *\n");
+    printf("* * * * * * * * * * * * * * * * * * * **\n");
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].active) {
-            printf("* %s. %s:%d\n", &clients[i].nickname, inet_ntoa(clients[i].addr.sin_addr), ntohs(clients[i].addr.sin_port));
+            char temp_buf[41];
+            snprintf(temp_buf, 38, " %-19s\t%s:%d", 
+             clients[i].nickname, inet_ntoa(clients[i].addr.sin_addr), ntohs(clients[i].addr.sin_port));
+
+            printf("*%s*\n", temp_buf);
         }
     }
     printf("****************************************\n");
@@ -199,21 +204,24 @@ void printQuit() {
 
 DWORD WINAPI ProcessStocastic(LPVOID arg) {
 
-    char command;
+    char command[2];
 
-    if (fgets(command, 1, stdin) == NULL) 
-        return 0;
-    
-    if (command == 'i') {
-        printClientInfo();
-    } else if (command == 's') {
-        printChatStatistics();
-    } else if (command == 'q') {
-        printQuit();
-    } else {
-        printf("Invalid Command\n");
+    while(1) {
+        if (fgets(command, 2, stdin) == NULL) 
+            return 0;
+        
+        if (command[0] == 'i') {
+            printClientInfo();
+        } else if (command[0] == 's') {
+            printChatStatistics();
+        } else if (command[0] == 'q') {
+            printQuit();
+        } else {
+            printf("Invalid Command\n");
+        }
     }
 
+    return 0;
 
 }
 
@@ -222,8 +230,8 @@ int main(int argc, char* argv[])
     int retval, addrlen;
     SOCKET sock;
     SOCKADDR_IN serveraddr, clientaddr;
-    HANDLE hThread;
-    DWORD ThreadId;
+    HANDLE mThread, sThread;
+    DWORD mThreadId, sThreadId;
 
     WSADATA wsa;
 	if(WSAStartup(MAKEWORD(2,2), &wsa) != 0)
@@ -243,10 +251,14 @@ int main(int argc, char* argv[])
     printCommandMenu();
 	printf("[UDP SERVER READY] success bind & listen.\n");
 
-	hThread = CreateThread(NULL, 0, ProcessClient, (LPVOID)sock, 0, &ThreadId);
-	if (hThread == NULL) err_quit("CreateThread()");
+	mThread = CreateThread(NULL, 0, ProcessClient, (LPVOID)sock, 0, &mThreadId);
+	if (mThread == NULL) err_quit("CreateThread()");
 
-	WaitForSingleObject(hThread, INFINITE);
+    sThread = CreateThread(NULL, 0, ProcessStocastic, (LPVOID)sock, 0, &sThreadId);
+    if (sThread == NULL) err_quit("CreateThread()");
+
+	WaitForSingleObject(mThread, INFINITE);
+    WaitForSingleObject(sThread, INFINITE);
 
 	closesocket(sock);
 	WSACleanup();
