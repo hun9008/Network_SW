@@ -1,9 +1,16 @@
 #include <winsock.h>
 #include <stdlib.h> 
 #include <stdio.h>
+#include <time.h>
 
 #define BUFSIZE 512
 #define MAX_CLIENTS 100
+
+int sum_messages = 0;
+int sum_bytes = 0;
+time_t start_time;
+time_t current_time;
+int running_time = 0;
 
 void err_quit(char *msg)
 {
@@ -129,6 +136,8 @@ DWORD WINAPI ProcessClient(LPVOID arg) {
 
             buf[retval] = '\0';
             printf("Message from client (%s:%d): %s\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), buf);
+            sum_messages++;
+            sum_bytes += retval;
 
             // buf는 [nickname] message 형태로 전송됨. 이 중 nickname을 추출
             char nickname[20];
@@ -184,16 +193,21 @@ void printClientInfo() {
 }
 
 void printChatStatistics() {
+    // running_time을 갱신
+    current_time = time(NULL);
+    running_time = (int)difftime(current_time, start_time);
+
     printf("****************************************\n");
     printf("*           CHAT STATISTICS            *\n");
     printf("****************************************\n");
-    printf("*                                      *\n");
-    printf("*                                      *\n");
-    printf("*                                      *\n");
-    printf("*                                      *\n");
-    printf("*                                      *\n");
+    printf("* Msg/min : %-10d*\n", sum_messages / running_time * 60);
+    printf("* Bytes/min : %-8d*\n", sum_bytes / running_time * 60);
+    printf("* Total Msgs : %-7d*\n", sum_messages);
+    printf("* Total Bytes : %-6d*\n", sum_bytes);
+    printf("* Total Time : %-7d*\n", running_time);
     printf("****************************************\n");
 }
+
 
 void printQuit() {
     printf("****************************************\n");
@@ -247,6 +261,8 @@ int main(int argc, char* argv[])
 
     retval = bind(sock, (SOCKADDR *)&serveraddr, sizeof(serveraddr));
 	if(retval == SOCKET_ERROR) err_quit("bind()");
+
+    start_time = time(NULL);
 
     printCommandMenu();
 	printf("[UDP SERVER READY] success bind & listen.\n");
