@@ -196,15 +196,18 @@ void printChatStatistics() {
     // running_time을 갱신
     current_time = time(NULL);
     running_time = (int)difftime(current_time, start_time);
+    int minute = running_time / 60.0;
+
+    if (minute == 0) minute = 1;
 
     printf("****************************************\n");
     printf("*           CHAT STATISTICS            *\n");
     printf("****************************************\n");
-    printf("* Msg/min : %-10d*\n", sum_messages / running_time * 60);
-    printf("* Bytes/min : %-8d*\n", sum_bytes / running_time * 60);
-    printf("* Total Msgs : %-7d*\n", sum_messages);
-    printf("* Total Bytes : %-6d*\n", sum_bytes);
-    printf("* Total Time : %-7d*\n", running_time);
+    printf("* Msg/min : %-26f *\n", (float)sum_messages / minute);
+    printf("* Bytes/min : %-24f *\n", (float)sum_bytes / minute);
+    printf("* Total Msgs : %-23d *\n", sum_messages);
+    printf("* Total Bytes : %-22d *\n", sum_bytes);
+    printf("* Total Time : %-23d *\n", running_time);
     printf("****************************************\n");
 }
 
@@ -230,8 +233,9 @@ DWORD WINAPI ProcessStocastic(LPVOID arg) {
             printChatStatistics();
         } else if (command[0] == 'q') {
             printQuit();
+            break;
         } else {
-            printf("Invalid Command\n");
+            printf("*  i - info || s - static || q - quit  *\n");
         }
     }
 
@@ -273,7 +277,7 @@ int main(int argc, char* argv[])
     sThread = CreateThread(NULL, 0, ProcessStocastic, (LPVOID)sock, 0, &sThreadId);
     if (sThread == NULL) err_quit("CreateThread()");
 
-	WaitForSingleObject(mThread, INFINITE);
+	// WaitForSingleObject(mThread, INFINITE);
     WaitForSingleObject(sThread, INFINITE);
 
 	closesocket(sock);
