@@ -32,19 +32,42 @@ void err_display(char *msg)
 	LocalFree(lpMsgBuf);
 }
 
+void printCommandMenu() {
+    printf("****************************************\n");
+    printf("*              COMMAND MENU            *\n");
+    printf("****************************************\n");
+    printf("*      ___                             *\n");
+    printf("*     |   |      Press 'i' to get      *\n");
+    printf("*     | i |   -> Client Info           *\n");
+    printf("*     |___|                            *\n");
+    printf("*                                      *\n");
+    printf("*      ___                             *\n");
+    printf("*     |   |      Press 's' to get      *\n");
+    printf("*     | s |   -> Chat Statistics       *\n");
+    printf("*     |___|                            *\n");
+    printf("*                                      *\n");
+    printf("*      ___                             *\n");
+    printf("*     |   |      Press 'q' to Quit     *\n");
+    printf("*     | q |                            *\n");
+    printf("*     |___|                            *\n");
+    printf("****************************************\n");
+}
+
 typedef struct {
-    SOCKADDR_IN addr;  // 클라이언트 주소
-    int active;        // 활성화 여부
+    SOCKADDR_IN addr;  
+    int active;      
+    char nickname[20]; 
 } ClientInfo;
 
 ClientInfo clients[MAX_CLIENTS];  // 클라이언트 정보 저장 배열
 
-void add_client(SOCKADDR_IN* clientaddr) {
+void add_client(SOCKADDR_IN* clientaddr, char* nickname) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (!clients[i].active) {
             clients[i].addr = *clientaddr;
             clients[i].active = 1;
-            printf("New client added: %s:%d\n", inet_ntoa(clientaddr->sin_addr), ntohs(clientaddr->sin_port));
+            strcpy(clients[i].nickname, nickname);
+            printf("New client added: [%s] %s:%d\n", nickname, inet_ntoa(clientaddr->sin_addr), ntohs(clientaddr->sin_port));
             return;
         }
     }
@@ -106,9 +129,21 @@ DWORD WINAPI ProcessClient(LPVOID arg) {
             buf[retval] = '\0';
             printf("Message from client (%s:%d): %s\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), buf);
 
+            // buf는 [nickname] message 형태로 전송됨. 이 중 nickname을 추출
+            char nickname[20];
+            int i, j = 0;
+            for (i = 1; i < retval; i++) {  
+                if (buf[i] == ']') {
+                    break;
+                }
+                nickname[j++] = buf[i];
+            }
+            nickname[j] = '\0';
+
+
             // 새로운 클라이언트라면 추가
             if (!is_known_client(&clientaddr)) {
-                add_client(&clientaddr);
+                add_client(&clientaddr, nickname);
             }
 
             // 에코 메시지: 보낸 클라이언트를 제외한 모든 클라이언트에게 전송
@@ -117,6 +152,69 @@ DWORD WINAPI ProcessClient(LPVOID arg) {
     }
 
     return 0;
+}
+
+void printClientInfo() {
+    int active_clients_num = 0;
+
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].active) {
+            active_clients_num++;
+        }
+    }
+
+    printf("****************************************\n");
+    printf("*              CLIENT INFO             *\n");
+    printf("****************************************\n");
+    printf("*           Client Number : %d         *\n", active_clients_num);
+
+    printf("* No. IP Address      Port Number       *\n");
+
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].active) {
+            printf("* %s. %s:%d\n", &clients[i].nickname, inet_ntoa(clients[i].addr.sin_addr), ntohs(clients[i].addr.sin_port));
+        }
+    }
+    printf("****************************************\n");
+}
+
+void printChatStatistics() {
+    printf("****************************************\n");
+    printf("*           CHAT STATISTICS            *\n");
+    printf("****************************************\n");
+    printf("*                                      *\n");
+    printf("*                                      *\n");
+    printf("*                                      *\n");
+    printf("*                                      *\n");
+    printf("*                                      *\n");
+    printf("****************************************\n");
+}
+
+void printQuit() {
+    printf("****************************************\n");
+    printf("*              I'm Quit!               *\n");
+    printf("****************************************\n");
+}
+
+
+DWORD WINAPI ProcessStocastic(LPVOID arg) {
+
+    char command;
+
+    if (fgets(command, 1, stdin) == NULL) 
+        return 0;
+    
+    if (command == 'i') {
+        printClientInfo();
+    } else if (command == 's') {
+        printChatStatistics();
+    } else if (command == 'q') {
+        printQuit();
+    } else {
+        printf("Invalid Command\n");
+    }
+
+
 }
 
 int main(int argc, char* argv[])
@@ -142,6 +240,7 @@ int main(int argc, char* argv[])
     retval = bind(sock, (SOCKADDR *)&serveraddr, sizeof(serveraddr));
 	if(retval == SOCKET_ERROR) err_quit("bind()");
 
+    printCommandMenu();
 	printf("[UDP SERVER READY] success bind & listen.\n");
 
 	hThread = CreateThread(NULL, 0, ProcessClient, (LPVOID)sock, 0, &ThreadId);
