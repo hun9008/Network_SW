@@ -161,7 +161,9 @@ void printClientInfo() {
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].active) {
-            printf("* %-20s\t%s:%d *\n", clients[i].nickname, inet_ntoa(clients[i].addr.sin_addr), ntohs(clients[i].addr.sin_port));
+            printf("* %-20s active %s:%d *\n", clients[i].nickname, inet_ntoa(clients[i].addr.sin_addr), ntohs(clients[i].addr.sin_port));
+        } else {
+            printf("* %-20s inactive                   *\n", clients[i].nickname);
         }
     }
     printf("****************************************\n");
