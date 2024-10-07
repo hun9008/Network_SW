@@ -205,7 +205,7 @@ DWORD WINAPI ProcessStocastic(LPVOID arg) {
         } else if (command[0] == 'q') {
             printQuit();
         } else {
-            printf("Invalid Command\n");
+            printf("*  i - info || s - static || q - quit  *\n");
         }
     }
 
