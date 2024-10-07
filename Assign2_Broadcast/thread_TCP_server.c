@@ -163,7 +163,10 @@ void printClientInfo() {
         if (clients[i].active) {
             printf("* %-20s active %s:%d *\n", clients[i].nickname, inet_ntoa(clients[i].addr.sin_addr), ntohs(clients[i].addr.sin_port));
         } else {
-            printf("* %-20s inactive                   *\n", clients[i].nickname);
+            if (clients[i].nickname != NULL) 
+            {
+                printf("* %-20s inactive                   *\n", clients[i].nickname);
+            }
         }
     }
     printf("****************************************\n");
@@ -273,7 +276,7 @@ int main(int argc, char* argv[])
         if (mThread == NULL) {
             err_quit("CreateThread()");
         }
-        CloseHandle(mThread); // 스레드 핸들 닫기
+        // CloseHandle(mThread); // 스레드 핸들 닫기
     }
 
     // 서버가 종료되면 소켓 정리
