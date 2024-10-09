@@ -50,17 +50,17 @@ DWORD WINAPI SendMessageThread(LPVOID arg)
     if (nickname[nlen - 1] == '\n')
         nickname[nlen - 1] = '\0';
 
+    retval = send(sock, nickname, strlen(nickname), 0);
+    if (retval == SOCKET_ERROR) {
+        err_display("send()");
+    }
+    printf("[TCP Client] Sent nickname.\n", retval);
+
     while (1) {
         printf("\n[Input Message] ");
 
         if (fgets(temp, BUFSIZE + 1, stdin) == NULL)
             break;
-        
-        if (strcmp(temp, "0\n") == 0) {
-            // 클라이언트가 종료를 원할 때 '0'을 서버에 보내고 종료
-            send(sock, "0", 1, 0);
-            break;
-        }
 
         sprintf(buf, "[%s] %s", nickname, temp);
 
@@ -99,7 +99,7 @@ DWORD WINAPI ReceiveMessageThread(LPVOID arg)
             
         if (retval == SOCKET_ERROR) {
             err_display("recv()");
-            continue;
+            exit(0);
         } else if (retval == 0) {
             // 서버에서 연결 종료
             printf("Server closed the connection.\n");
@@ -164,7 +164,7 @@ int main(int argc, char* argv[])
     if (recvThread == NULL) err_quit("CreateThread() for recv");
 
     // 스레드 핸들 닫기
-    WaitForSingleObject(sendThread, INFINITE);
+    // WaitForSingleObject(sendThread, INFINITE);
     WaitForSingleObject(recvThread, INFINITE);
 
     CloseHandle(sendThread);

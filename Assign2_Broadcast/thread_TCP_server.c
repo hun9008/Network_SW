@@ -10,7 +10,7 @@ int sum_messages = 0;
 int sum_bytes = 0;
 time_t start_time;
 time_t current_time;
-int running_time = 0;
+volatile int running_time = 0;
 int server_running = 1; // 서버 실행 상태 플래그
 
 void err_quit(char *msg)
@@ -98,12 +98,13 @@ void remove_client(SOCKET client_sock) {
 
 int is_known_client(SOCKET client_sock) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (clients[i].active && clients[i].socket == client_sock) {
+        if (clients[i].socket == client_sock) {
             return 1;
         }
     }
     return 0;
 }
+
 
 void broadcast_message(SOCKET sender_sock, char* buf, int len) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -112,6 +113,7 @@ void broadcast_message(SOCKET sender_sock, char* buf, int len) {
             int retval = send(clients[i].socket, buf, len, 0);
             if (retval == SOCKET_ERROR) {
                 err_display("send()");
+                printf("retval : %d\n", retval);
             }
         }
     }
@@ -126,9 +128,7 @@ DWORD WINAPI ProcessClient(LPVOID arg) {
         retval = recv(client_sock, buf, BUFSIZE, 0);
         if (retval == SOCKET_ERROR) {
             err_display("recv()");
-            break;
-        } else if (retval == 0) {
-            // 클라이언트가 연결을 끊음
+            printf("retval : %d\n", retval);
             remove_client(client_sock);
             break;
         }
@@ -149,8 +149,9 @@ void printClientInfo() {
     int active_clients_num = 0;
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (clients[i].active) {
-            active_clients_num++;
+        if (clients[i].nickname[0] != '\0') {  // 닉네임이 설정된 클라이언트만 카운트
+            if (clients[i].active)
+                active_clients_num++;
         }
     }
 
@@ -160,13 +161,12 @@ void printClientInfo() {
     printf("*           Client Number : %d          *\n", active_clients_num);
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (clients[i].active) {
-            printf("* %-20s active %s:%d *\n", clients[i].nickname, inet_ntoa(clients[i].addr.sin_addr), ntohs(clients[i].addr.sin_port));
-        } else {
-            if (clients[i].nickname != NULL) 
-            {
-                printf("* %-20s inactive                   *\n", clients[i].nickname);
-            }
+        if (clients[i].nickname[0] != '\0') {  // 닉네임이 설정된 클라이언트만 출력
+            printf("* %-11s %-8s %s:%d *\n",
+                   clients[i].nickname,
+                   clients[i].active ? "active" : "inactive",
+                   inet_ntoa(clients[i].addr.sin_addr),
+                   ntohs(clients[i].addr.sin_port));
         }
     }
     printf("****************************************\n");
@@ -179,11 +179,11 @@ void printChatStatistics() {
     printf("****************************************\n");
     printf("*           CHAT STATISTICS            *\n");
     printf("****************************************\n");
-    printf("* Msg/min : %-10d*\n", sum_messages / running_time * 60);
-    printf("* Bytes/min : %-8d*\n", sum_bytes / running_time * 60);
-    printf("* Total Msgs : %-7d*\n", sum_messages);
-    printf("* Total Bytes : %-6d*\n", sum_bytes);
-    printf("* Total Time : %-7d*\n", running_time);
+    printf("* Msg/min : %-27d*\n", sum_messages / running_time * 60);
+    printf("* Bytes/min : %-25d*\n", sum_bytes / running_time * 60);
+    printf("* Total Msgs : %-24d*\n", sum_messages);
+    printf("* Total Bytes : %-23d*\n", sum_bytes);
+    printf("* Total Time : %-24d*\n", running_time);
     printf("****************************************\n");
 }
 
@@ -192,6 +192,7 @@ void printQuit() {
     printf("*              I'm Quit!               *\n");
     printf("****************************************\n");
     server_running = 0; // 서버 종료 플래그 설정
+    exit(0);
 }
 
 DWORD WINAPI ProcessStocastic(LPVOID arg) {
@@ -280,6 +281,7 @@ int main(int argc, char* argv[])
     }
 
     // 서버가 종료되면 소켓 정리
+    WaitForSingleObject(sThread, INFINITE);
     closesocket(listen_sock);
     WSACleanup();
     return 0;
