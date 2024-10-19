@@ -1,0 +1,255 @@
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <pthread.h>
+#include <time.h>
+
+#define BUFSIZE 1500
+#define MAX_CLIENTS 100
+
+int sum_messages = 0;
+int sum_bytes = 0;
+time_t start_time;
+time_t current_time;
+volatile int running_time = 0;
+int server_running = 1; // 서버 실행 상태 플래그
+
+void err_quit(char *msg) {
+    perror(msg);
+    exit(-1);
+}
+
+void err_display(char *msg) {
+    perror(msg);
+}
+
+void printCommandMenu() {
+    printf("****************************************\n");
+    printf("*              COMMAND MENU            *\n");
+    printf("****************************************\n");
+    printf("*      ___                             *\n");
+    printf("*     |   |      Press 'i' to get      *\n");
+    printf("*     | i |   -> Client Info           *\n");
+    printf("*     |___|                            *\n");
+    printf("*                                      *\n");
+    printf("*      ___                             *\n");
+    printf("*     |   |      Press 's' to get      *\n");
+    printf("*     | s |   -> Chat Statistics       *\n");
+    printf("*     |___|                            *\n");
+    printf("*                                      *\n");
+    printf("*      ___                             *\n");
+    printf("*     |   |      Press 'q' to Quit     *\n");
+    printf("*     | q |                            *\n");
+    printf("*     |___|                            *\n");
+    printf("*                                      *\n");
+    printf("****************************************\n");
+}
+
+typedef struct {
+    int socket;  
+    struct sockaddr_in addr;  
+    int active;      
+    char nickname[20]; 
+} ClientInfo;
+
+ClientInfo clients[MAX_CLIENTS];  // 클라이언트 정보 저장 배열
+
+void add_client(int client_sock, struct sockaddr_in *clientaddr, char *nickname) {
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (!clients[i].active) {
+            clients[i].socket = client_sock;
+            clients[i].addr = *clientaddr;
+            clients[i].active = 1;
+            strcpy(clients[i].nickname, nickname);
+            printf("New client added: [%s] %s:%d\n", nickname,
+                   inet_ntoa(clientaddr->sin_addr), ntohs(clientaddr->sin_port));
+            return;
+        }
+    }
+    printf("Client list is full!\n");
+}
+
+void remove_client(int client_sock) {
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].socket == client_sock) {
+            clients[i].active = 0;
+            close(clients[i].socket);
+            printf("Client disconnected: %s:%d\n",
+                   inet_ntoa(clients[i].addr.sin_addr), ntohs(clients[i].addr.sin_port));
+            return;
+        }
+    }
+}
+
+void broadcast_message(int sender_sock, char *buf, int len) {
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].active && clients[i].socket != sender_sock) {
+            if (send(clients[i].socket, buf, len, 0) < 0) {
+                perror("send()");
+            }
+        }
+    }
+}
+
+void *process_client(void *arg) {
+    int client_sock = *(int *)arg;
+    char buf[BUFSIZE + 1];
+    int retval;
+
+    while (server_running) {
+        retval = recv(client_sock, buf, BUFSIZE, 0);
+        if (retval <= 0) {
+            if (retval < 0) perror("recv()");
+            remove_client(client_sock);
+            break;
+        }
+
+        buf[retval] = '\0';
+        printf("Message from client: %s\n", buf);
+        sum_messages++;
+        sum_bytes += retval;
+
+        broadcast_message(client_sock, buf, retval);
+    }
+
+    close(client_sock);
+    return NULL;
+}
+
+void printClientInfo() {
+    int active_clients_num = 0;
+
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].nickname[0] != '\0') {  // 닉네임이 설정된 클라이언트만 카운트
+            if (clients[i].active)
+                active_clients_num++;
+        }
+    }
+
+    printf("****************************************\n");
+    printf("*              CLIENT INFO             *\n");
+    printf("****************************************\n");
+    printf("*           Client Number : %d          *\n", active_clients_num);
+
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].nickname[0] != '\0') {  // 닉네임이 설정된 클라이언트만 출력
+            printf("* %-11s %-8s %s:%d *\n",
+                   clients[i].nickname,
+                   clients[i].active ? "active" : "inactive",
+                   inet_ntoa(clients[i].addr.sin_addr),
+                   ntohs(clients[i].addr.sin_port));
+        }
+    }
+    printf("****************************************\n");
+}
+
+void printChatStatistics() {
+    current_time = time(NULL);
+    running_time = (int)difftime(current_time, start_time);
+
+    printf("****************************************\n");
+    printf("*           CHAT STATISTICS            *\n");
+    printf("****************************************\n");
+    printf("* Msg/min : %-27d*\n", sum_messages / running_time * 60);
+    printf("* Bytes/min : %-25d*\n", sum_bytes / running_time * 60);
+    printf("* Total Msgs : %-24d*\n", sum_messages);
+    printf("* Total Bytes : %-23d*\n", sum_bytes);
+    printf("* Total Time : %-24d*\n", running_time);
+    printf("****************************************\n");
+}
+
+void printQuit() {
+    printf("****************************************\n");
+    printf("*              I'm Quit!               *\n");
+    printf("****************************************\n");
+    server_running = 0; // 서버 종료 플래그 설정
+    exit(0);
+}
+
+void *process_stocastic() {
+    char command[2];
+
+    while (server_running) {
+        if (fgets(command, 2, stdin) == NULL)
+            return 0;
+
+        if (command[0] == 'i') {
+            printClientInfo();
+        } else if (command[0] == 's') {
+            printChatStatistics();
+        } else if (command[0] == 'q') {
+            printQuit();
+        } else {
+            printf("*  i - info || s - static || q - quit  *\n");
+        }
+    }
+
+    return 0;
+}
+
+int main(int argc, char *argv[]) {
+
+    int retval;
+    int listen_sock, client_sock;
+    struct sockaddr_in serveraddr, clientaddr;
+    socklen_t addrlen;
+    pthread_t stocastic_tid, message_tid;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    int port = atoi(argv[1]);
+
+    listen_sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (listen_sock < 0) err_quit("socket()");
+
+    memset(&serveraddr, 0, sizeof(serveraddr));
+    serveraddr.sin_family = AF_INET;
+    serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serveraddr.sin_port = htons(port);
+
+    retval = bind(listen_sock, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
+    if (retval < 0) err_quit("bind()");
+
+    retval = listen(listen_sock, SOMAXCONN);
+    if (retval < 0) err_quit("listen()");
+
+    printf("[SERVER] Listening on port %d...\n", port);
+
+    printCommandMenu();
+
+    pthread_create(&stocastic_tid, NULL, process_stocastic, NULL);
+
+    while (server_running) {
+        addrlen = sizeof(clientaddr);
+        client_sock = accept(listen_sock, (struct sockaddr *)&clientaddr, &addrlen);
+        if (client_sock < 0) {
+            perror("accept()");
+            continue;
+        }
+
+        // 클라이언트의 nickname을 수신하여 추가
+        char nickname[20];
+        retval = recv(client_sock, nickname, sizeof(nickname) - 1, 0);
+        if (retval <= 0) {
+            close(client_sock);
+            continue;
+        }
+        nickname[retval] = '\0'; // 닉네임 문자열 종료
+
+        // 클라이언트 추가
+        add_client(client_sock, &clientaddr, nickname);
+
+        pthread_create(&message_tid, NULL, process_client, &client_sock);
+    }
+
+    // wait stocastic thread
+    pthread_join(stocastic_tid, NULL);
+    close(listen_sock);
+    return 0;
+}
