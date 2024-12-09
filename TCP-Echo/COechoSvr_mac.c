@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
     
     memset(&serveraddr, 0, sizeof(serveraddr));
     serveraddr.sin_family = AF_INET;
-    serveraddr.sin_port = htons(9000);
+    serveraddr.sin_port = htons(3306);
     serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     retval = bind(listen_sock, (struct sockaddr *)&serveraddr, sizeof(serveraddr));

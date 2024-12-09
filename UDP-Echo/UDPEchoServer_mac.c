@@ -30,10 +30,13 @@ int main(int argc, char* argv[])
 	struct sockaddr_in serveraddr;
 	memset(&serveraddr, 0, sizeof(serveraddr));
 	serveraddr.sin_family = AF_INET;
-	serveraddr.sin_port = htons(9000);
+	serveraddr.sin_port = htons(9999);
 	serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	retval = bind(sock, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
 	if(retval == -1) err_quit("bind()");
+
+	printf("[INFO] Server IP : %s\n", inet_ntoa(serveraddr.sin_addr));
+	printf("[INFO] Server Port : %d\n", ntohs(serveraddr.sin_port));
 	
 	// client address
 	struct sockaddr_in clientaddr;
@@ -56,13 +59,13 @@ int main(int argc, char* argv[])
 		printf("[UDP/%s:%d] %s\n", inet_ntoa(clientaddr.sin_addr), 
 			ntohs(clientaddr.sin_port), buf);
 
-		// send message back
-		retval = sendto(sock, buf, retval, 0, 
-			(struct sockaddr *)&clientaddr, sizeof(clientaddr));
-		if(retval == -1){
-			err_display("sendto()");
-			continue;
-		}
+		// // send message back
+		// retval = sendto(sock, buf, retval, 0, 
+		// 	(struct sockaddr *)&clientaddr, sizeof(clientaddr));
+		// if(retval == -1){
+		// 	err_display("sendto()");
+		// 	continue;
+		// }
 	}
 
 	// close socket
